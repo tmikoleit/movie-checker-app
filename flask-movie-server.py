@@ -9,6 +9,8 @@ import os
 import subprocess
 import base64
 import tempfile
+import logging
+from datetime import datetime
 from pathlib import Path
 from flask import Flask, render_template, request, jsonify
 from flask_cors import CORS
@@ -19,6 +21,21 @@ CORS(app)
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max
 
 client = Anthropic()
+
+# Set up file logging for auto-check operations
+LOG_DIR = Path('/tmp')
+LOG_FILE = LOG_DIR / 'movie-checker-wishlist.log'
+
+def log_event(message):
+    """Log event with timestamp to file."""
+    timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    log_message = f"[{timestamp}] {message}"
+    try:
+        with open(LOG_FILE, 'a') as f:
+            f.write(log_message + '\n')
+    except Exception as e:
+        print(f"Failed to write log: {e}")
+    print(log_message)
 
 def load_owned_movies() -> set:
     """Load owned movies from NAS via SSH."""
@@ -397,10 +414,15 @@ def save_wishlist():
 def auto_check_wishlist():
     """Check wishlist against owned movies, remove 95%+ matches automatically."""
     try:
+        log_event("=== Starting wishlist auto-check ===")
+
         # Load owned movies
         owned_movies = load_owned_movies()
         if not owned_movies:
+            log_event("ERROR: Could not load movie inventory from NAS")
             return jsonify({'error': 'Could not load movie inventory from NAS'}), 500
+
+        log_event(f"Loaded {len(owned_movies)} movies from inventory")
 
         # Load wishlist
         wishlist_path = '/volume1/Obsidian/Data Hoarding/Wishlist.md'
@@ -412,10 +434,12 @@ def auto_check_wishlist():
                 timeout=10
             )
             wishlist_content = result.stdout if result.returncode == 0 else None
-        except:
+        except Exception as e:
+            log_event(f"ERROR: Failed to read wishlist: {e}")
             wishlist_content = None
 
         if not wishlist_content:
+            log_event("Wishlist not found or empty")
             return jsonify({'message': 'Wishlist not found or empty', 'removed': []}), 200
 
         # Parse wishlist items
@@ -426,6 +450,8 @@ def auto_check_wishlist():
                 title = line[2:].rsplit(' (', 1)[0].strip()
                 wishlist_items.append(title)
 
+        log_event(f"Checking {len(wishlist_items)} wishlist items for 95%+ matches")
+
         # Check each wishlist item for 95%+ matches
         removed_items = []
         kept_items = []
@@ -435,6 +461,7 @@ def auto_check_wishlist():
             confidence_pct = round(confidence * 100)
 
             if match_type == 'confirmed' and confidence >= 0.95:
+                log_event(f"REMOVE: '{item}' → '{matched_title}' ({confidence_pct}%)")
                 removed_items.append({
                     'title': item,
                     'matched': matched_title,
@@ -444,6 +471,7 @@ def auto_check_wishlist():
                 kept_items.append(item)
 
         if not removed_items:
+            log_event(f"No 95%+ matches found. All {len(wishlist_items)} items kept.")
             return jsonify({
                 'message': 'No 95%+ matches found',
                 'removed': [],
@@ -467,8 +495,10 @@ def auto_check_wishlist():
         )
 
         if result.returncode != 0:
-            print(f"SSH write error: {result.stderr}")
+            log_event(f"ERROR: SSH write failed: {result.stderr}")
             return jsonify({'error': f'Failed to update wishlist: {result.stderr}'}), 500
+
+        log_event(f"SUCCESS: Removed {len(removed_items)} movies. {len(kept_items)} items remain in wishlist.")
 
         return jsonify({
             'success': True,
@@ -478,7 +508,7 @@ def auto_check_wishlist():
         }), 200
 
     except Exception as e:
-        print(f"ERROR in /api/auto-check-wishlist: {str(e)}")
+        log_event(f"ERROR: Unexpected error: {str(e)}")
         return jsonify({'error': f'Server error: {str(e)}'}), 500
 
 @app.route('/health')

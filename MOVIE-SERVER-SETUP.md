@@ -197,40 +197,44 @@ ssh plexadmin@100.99.108.45 "cd ~/docker/movie-server && docker-compose logs -f"
 
 ### Auto-Remove from Wishlist (95%+ Matches)
 
-The app can automatically detect when a wishlist item matches an owned movie at 95%+ confidence and remove it from the wishlist.
+The app automatically detects when a wishlist item matches an owned movie at 95%+ confidence and can remove it from the wishlist via the `/api/auto-check-wishlist` endpoint.
 
-#### Set Up Cron Job on Mini PC
+#### Manual Testing (Before Scheduling)
 
-1. The update script is in the GitHub repo at `update-movie-reference.sh`. It will be pulled via `git pull`.
-
-2. Add to crontab on Mini PC (runs daily at 2 AM):
+Test the endpoint from Mini PC:
 ```bash
-ssh plexadmin@100.99.108.45 "crontab -e"
+ssh plexadmin@100.99.108.45 "curl -X POST http://localhost:5000/api/auto-check-wishlist"
 ```
 
-Add this line:
-```
-0 2 * * * /home/plexadmin/movie-checker-app/update-movie-reference.sh >> /tmp/movie-checker-cron.log 2>&1
-```
-
-3. Verify cron job:
+Check the logs:
 ```bash
-ssh plexadmin@100.99.108.45 "crontab -l | grep update-movie"
-```
-
-4. Check logs:
-```bash
-ssh plexadmin@100.99.108.45 "tail -f /tmp/movie-checker-update.log"
-```
-
-#### Manual Trigger
-
-To manually run the wishlist check:
-```bash
-curl -X POST http://100.99.108.45:5000/api/auto-check-wishlist
+ssh plexadmin@100.99.108.45 "tail -f /tmp/movie-checker-wishlist.log"
 ```
 
 Response includes:
 - `removed`: List of movies removed (95%+ matches)
 - `checked`: Total wishlist items checked
 - `success`: Whether the update succeeded
+
+#### Set Up Cron Job (After Testing)
+
+Once you've verified it works manually, add to crontab on Mini PC:
+
+```bash
+ssh plexadmin@100.99.108.45 "crontab -e"
+```
+
+Add this line (runs daily at 2 AM):
+```
+0 2 * * * curl -s -X POST http://localhost:5000/api/auto-check-wishlist
+```
+
+Verify it was added:
+```bash
+ssh plexadmin@100.99.108.45 "crontab -l | grep auto-check"
+```
+
+Monitor logs after cron runs:
+```bash
+ssh plexadmin@100.99.108.45 "tail -20 /tmp/movie-checker-wishlist.log"
+```
