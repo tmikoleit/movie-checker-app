@@ -12,11 +12,13 @@ RUN apt-get update && apt-get install -y \
 COPY requirements-movie-server.txt .
 RUN pip install --no-cache-dir -r requirements-movie-server.txt
 
-# Copy app and templates
+# Copy app
 COPY flask-movie-server.py .
-COPY movie-server-template.html ./templates/index.html
 
-# Entrypoint script - SSH mounted as read-only, no need for chmod
+# Create templates directory (mounted as volume at runtime)
+RUN mkdir -p /app/templates
+
+# Entrypoint script
 RUN echo '#!/bin/bash\npython flask-movie-server.py' > /entrypoint.sh && chmod +x /entrypoint.sh
 
 # Run as plexadmin (not root)
@@ -26,5 +28,5 @@ USER plexadmin
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:5000/health')" || exit 1
 
-# Run app with entrypoint script
+# Run app
 ENTRYPOINT ["/entrypoint.sh"]

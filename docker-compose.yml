@@ -15,9 +15,9 @@ services:
       - default
     security_opt:
       - no-new-privileges:true
-    # SSH config must exist on host for NAS access
     volumes:
       - ${HOME}/.ssh:/home/plexadmin/.ssh:ro
+      - ./templates:/app/templates:ro
     logging:
       driver: "json-file"
       options:
