@@ -206,15 +206,21 @@ Test the endpoint from Mini PC:
 ssh plexadmin@100.99.108.45 "curl -X POST http://localhost:5000/api/auto-check-wishlist"
 ```
 
-Check the logs:
+Check the logs (in a separate terminal):
 ```bash
-ssh plexadmin@100.99.108.45 "tail -f /tmp/movie-checker-wishlist.log"
+ssh plexadmin@100.99.108.45 "cd ~/movie-checker-app && docker-compose logs -f movie-server"
 ```
 
 Response includes:
 - `removed`: List of movies removed (95%+ matches)
 - `checked`: Total wishlist items checked
 - `success`: Whether the update succeeded
+
+The logs show:
+- When auto-check started
+- How many movies were loaded
+- Which items were removed (if any)
+- Final status
 
 #### Set Up Cron Job (After Testing)
 
@@ -236,5 +242,5 @@ ssh plexadmin@100.99.108.45 "crontab -l | grep auto-check"
 
 Monitor logs after cron runs:
 ```bash
-ssh plexadmin@100.99.108.45 "tail -20 /tmp/movie-checker-wishlist.log"
+ssh plexadmin@100.99.108.45 "cd ~/movie-checker-app && docker-compose logs movie-server | grep -E '\[.*\]' | tail -30"
 ```

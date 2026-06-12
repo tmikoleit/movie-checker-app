@@ -18,7 +18,6 @@ services:
     volumes:
       - ${HOME}/.ssh:/home/plexadmin/.ssh:ro
       - ./templates:/app/templates:ro
-      - ./logs:/app/logs
     logging:
       driver: "json-file"
       options:

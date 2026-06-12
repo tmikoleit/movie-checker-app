@@ -15,8 +15,8 @@ RUN pip install --no-cache-dir -r requirements-movie-server.txt
 # Copy app
 COPY flask-movie-server.py .
 
-# Create templates and logs directories (mounted as volumes at runtime)
-RUN mkdir -p /app/templates /app/logs && chown -R plexadmin:plexadmin /app/logs
+# Create templates directory (mounted as volume at runtime)
+RUN mkdir -p /app/templates
 
 # Entrypoint script
 RUN echo '#!/bin/bash\npython flask-movie-server.py' > /entrypoint.sh && chmod +x /entrypoint.sh

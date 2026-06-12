@@ -22,22 +22,10 @@ app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max
 
 client = Anthropic()
 
-# Set up file logging for auto-check operations
-LOG_DIR = Path('/app/logs')
-LOG_FILE = LOG_DIR / 'wishlist-auto-check.log'
-LOG_DIR.mkdir(exist_ok=True)
-
 def log_event(message):
-    """Log event with timestamp to file and stdout."""
+    """Log event with timestamp to stdout."""
     timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    log_message = f"[{timestamp}] {message}"
-    try:
-        with open(LOG_FILE, 'a') as f:
-            f.write(log_message + '\n')
-            f.flush()
-    except Exception as e:
-        print(f"Failed to write log: {e}", flush=True)
-    print(log_message, flush=True)
+    print(f"[{timestamp}] {message}", flush=True)
 
 def load_owned_movies() -> set:
     """Load owned movies from NAS via SSH."""
