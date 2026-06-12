@@ -166,31 +166,22 @@ ssh plexadmin@100.99.108.45 "cd ~/docker/movie-server && docker-compose restart"
 
 ## Maintenance
 
-### Update Scripts & Redeploy (from Mac)
+### Update Workflow (GitHub-Only)
 
-⚠️ **Important:** Template changes (HTML/CSS/JS) update instantly without rebuild. Python server changes require a rebuild.
+⚠️ **CRITICAL:** Always deploy via `git pull` on Mini PC. Never use SCP or manual file copying.
 
-**For template (HTML/CSS/JS) changes only:**
+**All changes follow this workflow:**
+1. Edit files on Mac
+2. `git add` → `git commit` → `git push` to GitHub
+3. On Mini PC, pull and redeploy:
 ```bash
-scp ~/Documents/movie-checker-app/templates/index.html plexadmin@100.99.108.45:~/movie-checker-app/templates/
-```
-No restart needed — changes take effect immediately since templates are volume-mounted as read-only.
-
-**For Python server changes only:**
-```bash
-scp ~/Documents/movie-checker-app/flask-movie-server.py plexadmin@100.99.108.45:~/movie-checker-app/ && ssh plexadmin@100.99.108.45 "cd ~/movie-checker-app && docker-compose down && docker-compose up -d --build"
-```
-You MUST rebuild the container after any Python server file changes.
-
-**For Docker config changes:**
-```bash
-scp ~/Documents/movie-checker-app/Dockerfile.movie-server plexadmin@100.99.108.45:~/movie-checker-app/ && ssh plexadmin@100.99.108.45 "cd ~/movie-checker-app && docker-compose down && docker-compose up -d --build"
+ssh plexadmin@100.99.108.45 "cd ~/movie-checker-app && git pull && docker-compose down && docker-compose up -d --build"
 ```
 
-**For both template + Python (rare):**
-```bash
-scp ~/Documents/movie-checker-app/flask-movie-server.py plexadmin@100.99.108.45:~/movie-checker-app/ && scp ~/Documents/movie-checker-app/templates/index.html plexadmin@100.99.108.45:~/movie-checker-app/templates/ && ssh plexadmin@100.99.108.45 "cd ~/movie-checker-app && docker-compose down && docker-compose up -d --build"
-```
+**Important:** 
+- Template changes (HTML/CSS/JS) take effect after rebuild but update instantly in the container (volume-mounted)
+- Python server changes require rebuild
+- Docker config changes require rebuild
 
 **Update movie inventory from NAS:**
 ```bash
@@ -210,11 +201,7 @@ The app can automatically detect when a wishlist item matches an owned movie at 
 
 #### Set Up Cron Job on Mini PC
 
-1. Copy the update script to Mini PC:
-```bash
-scp ~/Documents/movie-checker-app/update-movie-reference.sh plexadmin@100.99.108.45:~/movie-checker-app/
-ssh plexadmin@100.99.108.45 "chmod +x ~/movie-checker-app/update-movie-reference.sh"
-```
+1. The update script is in the GitHub repo at `update-movie-reference.sh`. It will be pulled via `git pull`.
 
 2. Add to crontab on Mini PC (runs daily at 2 AM):
 ```bash
