@@ -1,0 +1,14 @@
+# Logrotate config for movie-checker daily maintenance script
+# Install to /etc/logrotate.d/movie-checker on Mini PC
+# Example: sudo cp logrotate.movie-checker /etc/logrotate.d/movie-checker
+
+/var/log/movie-checker-daily.log {
+    daily
+    missingok
+    rotate 14
+    compress
+    delaycompress
+    notifempty
+    create 0640 root root
+    sharedscripts
+}
