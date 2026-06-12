@@ -168,23 +168,29 @@ ssh plexadmin@100.99.108.45 "cd ~/docker/movie-server && docker-compose restart"
 
 ### Update Scripts & Redeploy (from Mac)
 
-**For template (HTML) changes only:**
-```bash
-scp ~/Documents/obsidian-vault/Scripts/movie-server-template.html plexadmin@100.99.108.45:~/docker/movie-server/templates/index.html
-```
-Templates are volume-mounted, so changes take effect immediately (no restart needed).
+⚠️ **Important:** Template changes (HTML/CSS/JS) update instantly without rebuild. Python server changes require a rebuild.
 
-**For Python server changes:**
+**For template (HTML/CSS/JS) changes only:**
 ```bash
-scp ~/Documents/obsidian-vault/Scripts/flask-movie-server.py plexadmin@100.99.108.45:~/docker/movie-server/ && ssh plexadmin@100.99.108.45 "cd ~/docker/movie-server && docker-compose down && docker-compose up -d --build"
+scp ~/Documents/movie-checker-app/templates/index.html plexadmin@100.99.108.45:~/movie-checker-app/templates/
+```
+No restart needed — changes take effect immediately since templates are volume-mounted as read-only.
+
+**For Python server changes only:**
+```bash
+scp ~/Documents/movie-checker-app/flask-movie-server.py plexadmin@100.99.108.45:~/movie-checker-app/ && ssh plexadmin@100.99.108.45 "cd ~/movie-checker-app && docker-compose down && docker-compose up -d --build"
+```
+You MUST rebuild the container after any Python server file changes.
+
+**For Docker config changes:**
+```bash
+scp ~/Documents/movie-checker-app/Dockerfile.movie-server plexadmin@100.99.108.45:~/movie-checker-app/ && ssh plexadmin@100.99.108.45 "cd ~/movie-checker-app && docker-compose down && docker-compose up -d --build"
 ```
 
-**For both (template + Python):**
+**For both template + Python (rare):**
 ```bash
-scp ~/Documents/obsidian-vault/Scripts/flask-movie-server.py plexadmin@100.99.108.45:~/docker/movie-server/ && scp ~/Documents/obsidian-vault/Scripts/movie-server-template.html plexadmin@100.99.108.45:~/docker/movie-server/templates/index.html && ssh plexadmin@100.99.108.45 "cd ~/docker/movie-server && docker-compose down && docker-compose up -d --build"
+scp ~/Documents/movie-checker-app/flask-movie-server.py plexadmin@100.99.108.45:~/movie-checker-app/ && scp ~/Documents/movie-checker-app/templates/index.html plexadmin@100.99.108.45:~/movie-checker-app/templates/ && ssh plexadmin@100.99.108.45 "cd ~/movie-checker-app && docker-compose down && docker-compose up -d --build"
 ```
-
-**Setup:** Templates are volume-mounted (`./templates:/app/templates:ro`), so they update live without rebuilding. Python changes require a rebuild.
 
 **Update movie inventory from NAS:**
 ```bash
@@ -195,3 +201,49 @@ scp ~/Documents/obsidian-vault/Scripts/flask-movie-server.py plexadmin@100.99.10
 ```bash
 ssh plexadmin@100.99.108.45 "cd ~/docker/movie-server && docker-compose logs -f"
 ```
+
+## Automated Updates & Wishlist Management
+
+### Auto-Remove from Wishlist (95%+ Matches)
+
+The app can automatically detect when a wishlist item matches an owned movie at 95%+ confidence and remove it from the wishlist.
+
+#### Set Up Cron Job on Mini PC
+
+1. Copy the update script to Mini PC:
+```bash
+scp ~/Documents/movie-checker-app/update-movie-reference.sh plexadmin@100.99.108.45:~/movie-checker-app/
+ssh plexadmin@100.99.108.45 "chmod +x ~/movie-checker-app/update-movie-reference.sh"
+```
+
+2. Add to crontab on Mini PC (runs daily at 2 AM):
+```bash
+ssh plexadmin@100.99.108.45 "crontab -e"
+```
+
+Add this line:
+```
+0 2 * * * /home/plexadmin/movie-checker-app/update-movie-reference.sh >> /tmp/movie-checker-cron.log 2>&1
+```
+
+3. Verify cron job:
+```bash
+ssh plexadmin@100.99.108.45 "crontab -l | grep update-movie"
+```
+
+4. Check logs:
+```bash
+ssh plexadmin@100.99.108.45 "tail -f /tmp/movie-checker-update.log"
+```
+
+#### Manual Trigger
+
+To manually run the wishlist check:
+```bash
+curl -X POST http://100.99.108.45:5000/api/auto-check-wishlist
+```
+
+Response includes:
+- `removed`: List of movies removed (95%+ matches)
+- `checked`: Total wishlist items checked
+- `success`: Whether the update succeeded

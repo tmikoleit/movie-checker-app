@@ -316,21 +316,21 @@
 
         <form id="textForm" style="display: none;">
             <div style="display: flex; gap: 8px; margin-bottom: 15px;">
-                <input type="text" id="movieInput" placeholder="Enter a movie title..." style="flex: 1; padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 16px;">
-                <button type="button" onclick="addMovieToList()" style="background: #667eea; color: white; border: none; padding: 12px 20px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; white-space: nowrap;">Add</button>
+                <input type="text" id="movieInput" placeholder="Enter a movie title..." style="flex: 1; padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 16px; min-width: 0;">
+                <button type="button" onclick="addMovieToList()" style="background: #667eea; color: white; border: none; padding: 12px 20px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; white-space: nowrap; flex-shrink: 0;">Add</button>
             </div>
             <ul id="moviesList" class="movie-list" style="margin-bottom: 15px; display: none;"></ul>
             <button type="button" id="checkAllButton" onclick="checkMoviesText()" style="background: #667eea; color: white; border: none; padding: 12px 24px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; width: 100%; transition: background 0.3s ease; display: none;" onmouseover="this.style.background='#764ba2'" onmouseout="this.style.background='#667eea'">Check All</button>
         </form>
 
         <form id="wishlistForm" style="display: none;">
-            <div style="display: flex; gap: 8px; margin-bottom: 15px; align-items: center;">
-                <input type="text" id="wishlistInput" placeholder="Enter a movie title..." style="flex: 1; padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 16px;">
-                <label style="display: flex; align-items: center; gap: 6px; white-space: nowrap; margin: 0;">
+            <div style="display: flex; gap: 8px; margin-bottom: 15px; align-items: center; min-width: 0;">
+                <input type="text" id="wishlistInput" placeholder="Enter a movie title..." style="flex: 1; padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 16px; min-width: 0;">
+                <label style="display: flex; align-items: center; gap: 6px; white-space: nowrap; margin: 0; flex-shrink: 0;">
                     <input type="checkbox" id="is4kCheckbox" style="width: 18px; height: 18px; cursor: pointer;">
                     <span style="font-size: 14px;">4K Worthy</span>
                 </label>
-                <button type="button" onclick="addToWishlist()" style="background: #667eea; color: white; border: none; padding: 12px 20px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; white-space: nowrap;">Add</button>
+                <button type="button" onclick="addToWishlist()" style="background: #667eea; color: white; border: none; padding: 12px 20px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; white-space: nowrap; flex-shrink: 0;">Add</button>
             </div>
             <ul id="wishlistList" class="movie-list" style="margin-bottom: 15px; display: none;"></ul>
             <button type="button" id="submitWishlistButton" onclick="submitWishlist()" style="background: #667eea; color: white; border: none; padding: 12px 24px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; width: 100%; transition: background 0.3s ease; display: none;" onmouseover="this.style.background='#764ba2'" onmouseout="this.style.background='#667eea'">Save to Wishlist</button>
@@ -443,11 +443,11 @@
             const confirmedList = document.getElementById('confirmedList');
             if (data.confirmed.length > 0) {
                 confirmedList.innerHTML = data.confirmed.map(m => {
-                    const isDifferent = m.matched && m.extracted.toLowerCase() !== m.matched.toLowerCase();
+                    const isDifferent = m.extracted.toLowerCase() !== m.matched.toLowerCase();
                     if (isDifferent) {
                         return `<li class="movie-item"><span class="movie-icon">✓</span>${m.extracted} <span style="color: #999; font-size: 12px;">→ ${m.matched}</span></li>`;
                     } else {
-                        return `<li class="movie-item"><span class="movie-icon">✓</span>${m.matched || m.extracted}</li>`;
+                        return `<li class="movie-item"><span class="movie-icon">✓</span>${m.matched}</li>`;
                     }
                 }).join('');
                 confirmedSection.style.display = 'block';

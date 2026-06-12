@@ -268,7 +268,7 @@ def compare():
                 if match_type == 'confirmed':
                     confirmed.append({
                         'extracted': title,
-                        'matched': matched_title if title.lower() != matched_title else None,
+                        'matched': matched_title,
                         'confidence': confidence_pct
                     })
                 elif match_type == 'likely':
@@ -391,6 +391,94 @@ def save_wishlist():
 
     except Exception as e:
         print(f"ERROR in /api/save-wishlist: {str(e)}")
+        return jsonify({'error': f'Server error: {str(e)}'}), 500
+
+@app.route('/api/auto-check-wishlist', methods=['POST'])
+def auto_check_wishlist():
+    """Check wishlist against owned movies, remove 95%+ matches automatically."""
+    try:
+        # Load owned movies
+        owned_movies = load_owned_movies()
+        if not owned_movies:
+            return jsonify({'error': 'Could not load movie inventory from NAS'}), 500
+
+        # Load wishlist
+        wishlist_path = '/volume1/Obsidian/Data Hoarding/Wishlist.md'
+        try:
+            result = subprocess.run(
+                ['ssh', 'nas', f'cat "{wishlist_path}"'],
+                capture_output=True,
+                text=True,
+                timeout=10
+            )
+            wishlist_content = result.stdout if result.returncode == 0 else None
+        except:
+            wishlist_content = None
+
+        if not wishlist_content:
+            return jsonify({'message': 'Wishlist not found or empty', 'removed': []}), 200
+
+        # Parse wishlist items
+        wishlist_items = []
+        for line in wishlist_content.split('\n'):
+            line = line.strip()
+            if line.startswith('- '):
+                title = line[2:].rsplit(' (', 1)[0].strip()
+                wishlist_items.append(title)
+
+        # Check each wishlist item for 95%+ matches
+        removed_items = []
+        kept_items = []
+
+        for item in wishlist_items:
+            match_type, matched_title, confidence = fuzzy_match(item, owned_movies)
+            confidence_pct = round(confidence * 100)
+
+            if match_type == 'confirmed' and confidence >= 0.95:
+                removed_items.append({
+                    'title': item,
+                    'matched': matched_title,
+                    'confidence': confidence_pct
+                })
+            else:
+                kept_items.append(item)
+
+        if not removed_items:
+            return jsonify({
+                'message': 'No 95%+ matches found',
+                'removed': [],
+                'checked': len(wishlist_items)
+            }), 200
+
+        # Rewrite wishlist without removed items
+        new_lines = ['# Wishlist']
+        for item in kept_items:
+            new_lines.append(f"- {item} (Blu-ray)")
+
+        new_content = '\n'.join(new_lines) + '\n'
+
+        # Write updated wishlist back
+        result = subprocess.run(
+            ['ssh', 'nas', f'cat > "{wishlist_path}"'],
+            input=new_content,
+            capture_output=True,
+            text=True,
+            timeout=10
+        )
+
+        if result.returncode != 0:
+            print(f"SSH write error: {result.stderr}")
+            return jsonify({'error': f'Failed to update wishlist: {result.stderr}'}), 500
+
+        return jsonify({
+            'success': True,
+            'message': f'Removed {len(removed_items)} movies from wishlist',
+            'removed': removed_items,
+            'checked': len(wishlist_items)
+        }), 200
+
+    except Exception as e:
+        print(f"ERROR in /api/auto-check-wishlist: {str(e)}")
         return jsonify({'error': f'Server error: {str(e)}'}), 500
 
 @app.route('/health')
