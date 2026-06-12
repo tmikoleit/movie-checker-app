@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  movie-server:
+    build:
+      context: .
+      dockerfile: Dockerfile.movie-server
+    container_name: movie_checker
+    restart: always
+    ports:
+      - "5000:5000"
+    environment:
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+    networks:
+      - default
+    security_opt:
+      - no-new-privileges:true
+    # SSH config must exist on host for NAS access
+    volumes:
+      - ${HOME}/.ssh:/home/plexadmin/.ssh:ro
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"

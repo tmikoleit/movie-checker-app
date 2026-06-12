@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Movie Checker</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 600px;
+            width: 100%;
+            padding: 40px;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+
+        .upload-area {
+            border: 2px dashed #ddd;
+            border-radius: 8px;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: #f9f9f9;
+        }
+
+        .upload-area:hover {
+            border-color: #667eea;
+            background: #f0f4ff;
+        }
+
+        .upload-area.dragging {
+            border-color: #667eea;
+            background: #f0f4ff;
+        }
+
+        .upload-icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+        }
+
+        .upload-text {
+            color: #333;
+            font-size: 16px;
+            font-weight: 500;
+            margin-bottom: 8px;
+        }
+
+        .upload-hint {
+            color: #999;
+            font-size: 13px;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 30px 0;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .results {
+            display: none;
+            margin-top: 30px;
+        }
+
+        .result-section {
+            margin-bottom: 25px;
+        }
+
+        .result-header {
+            font-weight: 600;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #eee;
+        }
+
+        .owned-header {
+            color: #27ae60;
+        }
+
+        .new-header {
+            color: #e74c3c;
+        }
+
+        .movie-list {
+            list-style: none;
+        }
+
+        .movie-item {
+            padding: 10px 0;
+            border-bottom: 1px solid #f0f0f0;
+            font-size: 14px;
+            color: #333;
+        }
+
+        .movie-item:last-child {
+            border-bottom: none;
+        }
+
+        .movie-icon {
+            margin-right: 8px;
+            font-weight: bold;
+        }
+
+        .summary {
+            background: #f9f9f9;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            margin-top: 20px;
+            font-size: 13px;
+            color: #666;
+        }
+
+        .summary-number {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .error {
+            background: #fee;
+            color: #c33;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            font-size: 14px;
+            display: none;
+        }
+
+        .reset-button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 20px;
+            width: 100%;
+            transition: background 0.3s ease;
+        }
+
+        .reset-button:hover {
+            background: #764ba2;
+        }
+
+        .empty-state {
+            color: #999;
+            font-size: 14px;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .mode-tab {
+            background: none;
+            border: none;
+            padding: 12px 16px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            color: #999;
+            transition: color 0.3s ease;
+            border-bottom: 2px solid transparent;
+            margin-bottom: -2px;
+        }
+
+        .mode-tab.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+        }
+
+        .mode-tab:hover {
+            color: #667eea;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 20px;
+                margin: 10px;
+            }
+
+            h1 {
+                font-size: 24px;
+                margin-bottom: 8px;
+            }
+
+            .subtitle {
+                font-size: 13px;
+                margin-bottom: 20px;
+            }
+
+            .upload-area {
+                padding: 30px 20px;
+            }
+
+            .upload-icon {
+                font-size: 40px;
+            }
+
+            .upload-text {
+                font-size: 15px;
+            }
+
+            .upload-hint {
+                font-size: 12px;
+            }
+
+            .result-section {
+                margin-bottom: 15px;
+            }
+
+            .movie-item {
+                padding: 8px 0;
+                font-size: 13px;
+            }
+
+            .movie-item button {
+                padding: 3px 6px !important;
+                font-size: 11px !important;
+            }
+
+            .reset-button {
+                padding: 10px 16px;
+                font-size: 13px;
+            }
+
+            .summary {
+                padding: 12px;
+                font-size: 12px;
+            }
+
+            .summary-number {
+                font-size: 16px;
+            }
+
+            input[type="text"] {
+                font-size: 16px !important;
+            }
+
+            button {
+                font-size: 13px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📀 Movie Checker</h1>
+        <p class="subtitle">Check if you already own movies at the store</p>
+
+        <div style="display: flex; gap: 10px; margin-bottom: 30px; border-bottom: 2px solid #eee;">
+            <button id="photoTab" class="mode-tab active" onclick="switchMode('photo')">📸 Photo</button>
+            <button id="textTab" class="mode-tab" onclick="switchMode('text')">✏️ Type</button>
+            <button id="wishlistTab" class="mode-tab" onclick="switchMode('wishlist')">⭐ Wishlist</button>
+        </div>
+
+        <form id="uploadForm">
+            <div class="upload-area" id="uploadArea">
+                <div class="upload-icon">📸</div>
+                <div class="upload-text">Take a photo of movies</div>
+                <div class="upload-hint">or click to select an image</div>
+                <input type="file" id="photoInput" accept="image/*">
+            </div>
+        </form>
+
+        <form id="textForm" style="display: none;">
+            <div style="display: flex; gap: 8px; margin-bottom: 15px;">
+                <input type="text" id="movieInput" placeholder="Enter a movie title..." style="flex: 1; padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 16px;">
+                <button type="button" onclick="addMovieToList()" style="background: #667eea; color: white; border: none; padding: 12px 20px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; white-space: nowrap;">Add</button>
+            </div>
+            <ul id="moviesList" class="movie-list" style="margin-bottom: 15px; display: none;"></ul>
+            <button type="button" id="checkAllButton" onclick="checkMoviesText()" style="background: #667eea; color: white; border: none; padding: 12px 24px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; width: 100%; transition: background 0.3s ease; display: none;" onmouseover="this.style.background='#764ba2'" onmouseout="this.style.background='#667eea'">Check All</button>
+        </form>
+
+        <form id="wishlistForm" style="display: none;">
+            <div style="display: flex; gap: 8px; margin-bottom: 15px; align-items: center;">
+                <input type="text" id="wishlistInput" placeholder="Enter a movie title..." style="flex: 1; padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 16px;">
+                <label style="display: flex; align-items: center; gap: 6px; white-space: nowrap; margin: 0;">
+                    <input type="checkbox" id="is4kCheckbox" style="width: 18px; height: 18px; cursor: pointer;">
+                    <span style="font-size: 14px;">4K Worthy</span>
+                </label>
+                <button type="button" onclick="addToWishlist()" style="background: #667eea; color: white; border: none; padding: 12px 20px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; white-space: nowrap;">Add</button>
+            </div>
+            <ul id="wishlistList" class="movie-list" style="margin-bottom: 15px; display: none;"></ul>
+            <button type="button" id="submitWishlistButton" onclick="submitWishlist()" style="background: #667eea; color: white; border: none; padding: 12px 24px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; width: 100%; transition: background 0.3s ease; display: none;" onmouseover="this.style.background='#764ba2'" onmouseout="this.style.background='#667eea'">Save to Wishlist</button>
+        </form>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <div>Analyzing photo...</div>
+        </div>
+
+        <div class="error" id="error"></div>
+
+        <div class="results" id="results">
+            <div class="result-section" id="confirmedSection" style="display: none;">
+                <div class="result-header owned-header">✅ You Own These (Confirmed)</div>
+                <ul class="movie-list" id="confirmedList"></ul>
+            </div>
+
+            <div class="result-section" id="likelySection" style="display: none;">
+                <div class="result-header" style="color: #f39c12; border-bottom-color: #f39c12;">⚠️ Likely Match (Check These)</div>
+                <ul class="movie-list" id="likelyList"></ul>
+                <div style="font-size: 12px; color: #999; margin-top: 8px; font-style: italic;">These might be movies you own but had different text on the spine</div>
+            </div>
+
+            <div class="result-section" id="noMatchSection" style="display: none;">
+                <div class="result-header new-header">❌ Not Found in Library</div>
+                <ul class="movie-list" id="noMatchList"></ul>
+            </div>
+
+            <div class="summary" id="summary"></div>
+
+            <button class="reset-button" onclick="resetForm()">Check Another Photo</button>
+        </div>
+    </div>
+
+    <script>
+        const uploadArea = document.getElementById('uploadArea');
+        const photoInput = document.getElementById('photoInput');
+        const loading = document.getElementById('loading');
+        const results = document.getElementById('results');
+        const errorDiv = document.getElementById('error');
+
+        // Click to upload
+        uploadArea.addEventListener('click', () => photoInput.click());
+
+        // Drag and drop
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragging');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragging');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragging');
+            handleFile(e.dataTransfer.files[0]);
+        });
+
+        // File input change
+        photoInput.addEventListener('change', (e) => {
+            handleFile(e.target.files[0]);
+        });
+
+        function handleFile(file) {
+            if (!file || !file.type.startsWith('image/')) {
+                showError('Please select an image file');
+                return;
+            }
+
+            uploadPhoto(file);
+        }
+
+        async function uploadPhoto(file) {
+            const formData = new FormData();
+            formData.append('photo', file);
+
+            loading.style.display = 'block';
+            results.style.display = 'none';
+            errorDiv.style.display = 'none';
+
+            try {
+                const response = await fetch('/api/compare', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+                console.log("Response data:", data);
+                console.log("no_match items:", data.no_match);
+                data.no_match?.forEach((item, i) => console.log(`no_match[${i}]:`, item));
+
+                if (data.success) {
+                    displayResults(data);
+                } else {
+                    showError(data.error || 'Unknown error');
+                }
+            } catch (error) {
+                showError('Failed to upload: ' + error.message);
+            } finally {
+                loading.style.display = 'none';
+            }
+        }
+
+        function displayResults(data) {
+            // Confirmed matches
+            const confirmedSection = document.getElementById('confirmedSection');
+            const confirmedList = document.getElementById('confirmedList');
+            if (data.confirmed.length > 0) {
+                confirmedList.innerHTML = data.confirmed.map(m => {
+                    const isDifferent = m.matched && m.extracted.toLowerCase() !== m.matched.toLowerCase();
+                    if (isDifferent) {
+                        return `<li class="movie-item"><span class="movie-icon">✓</span>${m.extracted} <span style="color: #999; font-size: 12px;">→ ${m.matched}</span></li>`;
+                    } else {
+                        return `<li class="movie-item"><span class="movie-icon">✓</span>${m.matched || m.extracted}</li>`;
+                    }
+                }).join('');
+                confirmedSection.style.display = 'block';
+            } else {
+                confirmedSection.style.display = 'none';
+            }
+
+            // Likely matches
+            const likelySection = document.getElementById('likelySection');
+            const likelyList = document.getElementById('likelyList');
+            if (data.likely.length > 0) {
+                likelyList.innerHTML = data.likely.map(m =>
+                    `<li class="movie-item"><span class="movie-icon">?</span>${m.extracted} <span style="color: #999; font-size: 12px;">→ ${m.matched} (${m.confidence}%)</span></li>`
+                ).join('');
+                likelySection.style.display = 'block';
+            } else {
+                likelySection.style.display = 'none';
+            }
+
+            // No matches (including close matches 50%+)
+            const noMatchSection = document.getElementById('noMatchSection');
+            const noMatchList = document.getElementById('noMatchList');
+            if (data.no_match && data.no_match.length > 0) {
+                noMatchList.innerHTML = data.no_match.map(m => {
+                    if (!m || typeof m !== 'object') return '';
+
+                    // Safely extract and validate properties
+                    const title = typeof m.extracted === 'string' ? m.extracted.trim() :
+                                  m.extracted ? String(m.extracted).trim() : '(unknown)';
+                    const matched = typeof m.matched === 'string' ? m.matched.trim() : null;
+                    const confidence = typeof m.confidence === 'number' ? m.confidence : 0;
+
+                    if (matched && matched !== 'null' && matched !== 'None' && confidence > 0) {
+                        return `<li class="movie-item"><span class="movie-icon">?</span>${title} <span style="color: #999; font-size: 12px;">→ ${matched} (${confidence}%)</span></li>`;
+                    } else {
+                        return `<li class="movie-item"><span class="movie-icon">+</span>${title}</li>`;
+                    }
+                }).filter(Boolean).join('');
+                noMatchSection.style.display = 'block';
+            } else {
+                noMatchSection.style.display = 'none';
+            }
+
+            // Summary
+            const summary = document.getElementById('summary');
+            summary.innerHTML = `
+                <div><span class="summary-number">${data.confirmed_count}</span> confirmed owned</div>
+                <div style="margin-top: 6px; font-size: 13px; color: #666;">
+                    ${data.likely_count} likely match${data.likely_count !== 1 ? 'es' : ''} •
+                    ${data.no_match_count} not found
+                </div>
+            `;
+
+            results.style.display = 'block';
+        }
+
+        function showError(message) {
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+        }
+
+        let moviesToCheck = [];
+        let wishlistItems = [];  // Array of {title, is4k}
+
+        function resetForm() {
+            photoInput.value = '';
+            document.getElementById('movieInput').value = '';
+            document.getElementById('wishlistInput').value = '';
+            document.getElementById('is4kCheckbox').checked = false;
+            moviesToCheck = [];
+            wishlistItems = [];
+            updateMoviesList();
+            updateWishlistList();
+            results.style.display = 'none';
+            errorDiv.style.display = 'none';
+            uploadArea.classList.remove('dragging');
+        }
+
+        function switchMode(mode) {
+            const uploadForm = document.getElementById('uploadForm');
+            const textForm = document.getElementById('textForm');
+            const wishlistForm = document.getElementById('wishlistForm');
+            const photoTab = document.getElementById('photoTab');
+            const textTab = document.getElementById('textTab');
+            const wishlistTab = document.getElementById('wishlistTab');
+
+            uploadForm.style.display = 'none';
+            textForm.style.display = 'none';
+            wishlistForm.style.display = 'none';
+            photoTab.classList.remove('active');
+            textTab.classList.remove('active');
+            wishlistTab.classList.remove('active');
+
+            if (mode === 'photo') {
+                uploadForm.style.display = 'block';
+                photoTab.classList.add('active');
+            } else if (mode === 'text') {
+                textForm.style.display = 'block';
+                textTab.classList.add('active');
+                document.getElementById('movieInput').focus();
+            } else if (mode === 'wishlist') {
+                wishlistForm.style.display = 'block';
+                wishlistTab.classList.add('active');
+                document.getElementById('wishlistInput').focus();
+            }
+            resetForm();
+        }
+
+        function addMovieToList() {
+            const movieInput = document.getElementById('movieInput');
+            const title = movieInput.value.trim();
+
+            if (!title) {
+                showError('Please enter a movie title');
+                return;
+            }
+
+            if (moviesToCheck.includes(title)) {
+                showError('Movie already in list');
+                return;
+            }
+
+            moviesToCheck.push(title);
+            movieInput.value = '';
+            updateMoviesList();
+            movieInput.focus();
+            errorDiv.style.display = 'none';
+        }
+
+        function removeMovieFromList(index) {
+            moviesToCheck.splice(index, 1);
+            updateMoviesList();
+        }
+
+        function updateMoviesList() {
+            const moviesList = document.getElementById('moviesList');
+            const checkAllButton = document.getElementById('checkAllButton');
+
+            if (moviesToCheck.length === 0) {
+                moviesList.style.display = 'none';
+                checkAllButton.style.display = 'none';
+                return;
+            }
+
+            moviesList.innerHTML = moviesToCheck.map((movie, i) =>
+                `<li class="movie-item" style="display: flex; justify-content: space-between; align-items: center;">
+                    <span>${movie}</span>
+                    <div style="display: flex; gap: 6px;">
+                        <button type="button" onclick="editMovieInList(${i})" style="background: #f39c12; color: white; border: none; padding: 4px 8px; border-radius: 4px; font-size: 12px; cursor: pointer;">Edit</button>
+                        <button type="button" onclick="removeMovieFromList(${i})" style="background: #e74c3c; color: white; border: none; padding: 4px 8px; border-radius: 4px; font-size: 12px; cursor: pointer;">Remove</button>
+                    </div>
+                </li>`
+            ).join('');
+
+            moviesList.style.display = 'block';
+            checkAllButton.style.display = 'block';
+        }
+
+        function editMovieInList(index) {
+            const movieInput = document.getElementById('movieInput');
+            movieInput.value = moviesToCheck[index];
+            removeMovieFromList(index);
+            movieInput.focus();
+        }
+
+        async function checkMoviesText() {
+            if (moviesToCheck.length === 0) {
+                showError('Please add at least one movie');
+                return;
+            }
+
+            loading.style.display = 'block';
+            results.style.display = 'none';
+            errorDiv.style.display = 'none';
+
+            try {
+                const response = await fetch('/api/compare-text', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({titles: moviesToCheck})
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    displayResults(data);
+                    moviesToCheck = [];
+                    updateMoviesList();
+                } else {
+                    showError(data.error || 'Unknown error');
+                }
+            } catch (error) {
+                showError('Failed to check: ' + error.message);
+            } finally {
+                loading.style.display = 'none';
+            }
+        }
+
+        document.getElementById('movieInput')?.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                addMovieToList();
+            }
+        });
+
+        function addToWishlist() {
+            const wishlistInput = document.getElementById('wishlistInput');
+            const is4kCheckbox = document.getElementById('is4kCheckbox');
+            const title = wishlistInput.value.trim();
+
+            if (!title) {
+                showError('Please enter a movie title');
+                return;
+            }
+
+            const isDuplicate = wishlistItems.some(item => item.title.toLowerCase() === title.toLowerCase());
+            if (isDuplicate) {
+                showError('Movie already in wishlist');
+                return;
+            }
+
+            wishlistItems.push({
+                title: title,
+                is4k: is4kCheckbox.checked
+            });
+
+            wishlistInput.value = '';
+            is4kCheckbox.checked = false;
+            updateWishlistList();
+            wishlistInput.focus();
+            errorDiv.style.display = 'none';
+        }
+
+        function removeFromWishlist(index) {
+            wishlistItems.splice(index, 1);
+            updateWishlistList();
+        }
+
+        function editWishlistItem(index) {
+            const item = wishlistItems[index];
+            document.getElementById('wishlistInput').value = item.title;
+            document.getElementById('is4kCheckbox').checked = item.is4k;
+            removeFromWishlist(index);
+            document.getElementById('wishlistInput').focus();
+        }
+
+        function updateWishlistList() {
+            const wishlistList = document.getElementById('wishlistList');
+            const submitButton = document.getElementById('submitWishlistButton');
+
+            if (wishlistItems.length === 0) {
+                wishlistList.style.display = 'none';
+                submitButton.style.display = 'none';
+                return;
+            }
+
+            wishlistList.innerHTML = wishlistItems.map((item, i) => {
+                const format = item.is4k ? '4K' : 'Blu-ray';
+                return `<li class="movie-item" style="display: flex; justify-content: space-between; align-items: center;">
+                    <span>${item.title} <span style="color: #999; font-size: 12px;">(${format})</span></span>
+                    <div style="display: flex; gap: 6px;">
+                        <button type="button" onclick="editWishlistItem(${i})" style="background: #f39c12; color: white; border: none; padding: 4px 8px; border-radius: 4px; font-size: 12px; cursor: pointer;">Edit</button>
+                        <button type="button" onclick="removeFromWishlist(${i})" style="background: #e74c3c; color: white; border: none; padding: 4px 8px; border-radius: 4px; font-size: 12px; cursor: pointer;">Remove</button>
+                    </div>
+                </li>`;
+            }).join('');
+
+            wishlistList.style.display = 'block';
+            submitButton.style.display = 'block';
+        }
+
+        async function submitWishlist() {
+            if (wishlistItems.length === 0) {
+                showError('Please add at least one movie to wishlist');
+                return;
+            }
+
+            loading.style.display = 'block';
+            errorDiv.style.display = 'none';
+
+            try {
+                const response = await fetch('/api/save-wishlist', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({items: wishlistItems})
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    wishlistItems = [];
+                    updateWishlistList();
+                    document.getElementById('wishlistInput').value = '';
+                    document.getElementById('is4kCheckbox').checked = false;
+                    showError('✓ Wishlist saved successfully!');
+                    errorDiv.style.background = '#f0f8f0';
+                    errorDiv.style.color = '#27ae60';
+                } else {
+                    showError(data.error || 'Failed to save wishlist');
+                }
+            } catch (error) {
+                showError('Failed to save: ' + error.message);
+            } finally {
+                loading.style.display = 'none';
+            }
+        }
+
+        document.getElementById('wishlistInput')?.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                addToWishlist();
+            }
+        });
+    </script>
+</body>
+</html>
