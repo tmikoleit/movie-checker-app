@@ -3,6 +3,8 @@
 # Generates Movie Inventory.md on the NAS with all owned movies
 # Run from Mini PC - no Mac dependency
 
+umask 0002  # Create files with 664 permissions (rw-rw-r--)
+
 INVENTORY_PATH="/volume1/Obsidian/Data Hoarding/Movie Inventory.md"
 PLEX_FOLDER="/volume1/Plex Media/Movies"
 

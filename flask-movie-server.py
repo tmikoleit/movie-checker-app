@@ -16,6 +16,8 @@ from flask import Flask, render_template, request, jsonify
 from flask_cors import CORS
 from anthropic import Anthropic
 
+os.umask(0o002)  # Create files with 664 permissions (rw-rw-r--)
+
 app = Flask(__name__)
 CORS(app)
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max
