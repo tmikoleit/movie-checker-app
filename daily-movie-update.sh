@@ -14,9 +14,9 @@ log_msg() {
 
 log_msg "=== Starting daily movie maintenance ==="
 
-# Step 1: Update movie inventory from Plex Media folders
-log_msg "Updating movie inventory from Plex Media folders on Mac..."
-if ~/Documents/obsidian-vault/Scripts/update-movie-inventory.sh >> "$LOG_FILE" 2>&1; then
+# Step 1: Update movie inventory from NAS Plex Media folder
+log_msg "Updating movie inventory from NAS Plex Media folder..."
+if ~/movie-checker-app/update-movie-inventory.sh >> "$LOG_FILE" 2>&1; then
     log_msg "✓ Inventory updated successfully"
 else
     log_msg "✗ ERROR: Inventory update failed"
