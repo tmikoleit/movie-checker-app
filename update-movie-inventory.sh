@@ -44,8 +44,8 @@ while IFS= read -r movie; do
     INVENTORY_CONTENT+="- $movie"$'\n'
 done <<< "$MOVIES"
 
-# Write to NAS
-ssh nas "cat > '$INVENTORY_PATH'" <<< "$INVENTORY_CONTENT"
+# Remove old file (so new one gets correct permissions from umask) and write
+ssh nas "rm -f '$INVENTORY_PATH' && cat > '$INVENTORY_PATH'" <<< "$INVENTORY_CONTENT"
 
 if [ $? -eq 0 ]; then
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] ✓ Inventory updated successfully ($TOTAL movies)"

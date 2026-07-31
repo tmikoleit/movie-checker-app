@@ -399,8 +399,9 @@ def save_wishlist():
                 # No removed section yet, just append to end
                 updated_content = existing_content + '\n' + new_content
 
+            # Remove and recreate to ensure proper permissions from umask
             result = subprocess.run(
-                ['ssh', 'nas', f'cat > "{wishlist_path}"'],
+                ['ssh', 'nas', f'rm -f "{wishlist_path}" && cat > "{wishlist_path}"'],
                 input=updated_content,
                 capture_output=True,
                 text=True,
@@ -523,9 +524,9 @@ def auto_check_wishlist():
 
         updated_content = '\n'.join(lines)
 
-        # Write updated wishlist
+        # Remove and recreate to ensure proper permissions from umask
         result = subprocess.run(
-            ['ssh', 'nas', f'cat > "{wishlist_path}"'],
+            ['ssh', 'nas', f'rm -f "{wishlist_path}" && cat > "{wishlist_path}"'],
             input=updated_content,
             capture_output=True,
             text=True,
