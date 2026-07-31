@@ -490,7 +490,7 @@ def auto_check_wishlist():
             log_event(f"ERROR: SSH append failed: {result.stderr}")
             return jsonify({'error': f'Failed to update wishlist: {result.stderr}'}), 500
 
-        log_event(f"SUCCESS: Removed {len(removed_items)} movies. {len(kept_items)} items remain in wishlist.")
+        log_event(f"SUCCESS: Removed {len(removed_items)} movies from wishlist.")
 
         return jsonify({
             'success': True,
