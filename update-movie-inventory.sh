@@ -5,8 +5,19 @@
 
 INVENTORY_PATH="/volume1/Obsidian/Data Hoarding/Movie Inventory.md"
 PLEX_FOLDER="/volume1/Plex Media/Movies"
+BACKUP_DIR="$HOME/movie-checker-app/logs/backups"
+
+mkdir -p "$BACKUP_DIR"
 
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Starting movie inventory update from NAS..."
+
+# Backup existing file before modification
+if ssh nas "test -f '$INVENTORY_PATH'"; then
+    TIMESTAMP=$(date '+%Y%m%d_%H%M%S')
+    BACKUP_FILE="$BACKUP_DIR/Movie\ Inventory.md.update.$TIMESTAMP.backup"
+    ssh nas "cat '$INVENTORY_PATH'" > "$BACKUP_FILE"
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] Backup: $INVENTORY_PATH → $BACKUP_FILE"
+fi
 
 # Get list of movies from Plex folder, sort alphabetically
 MOVIES=$(ssh nas "ls -1 '$PLEX_FOLDER' 2>/dev/null | grep -v '^@' | grep -v '^\.' | sort" 2>&1)

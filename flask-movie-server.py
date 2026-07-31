@@ -319,6 +319,29 @@ def compare():
         traceback.print_exc()
         return jsonify({'error': f'Server error: {str(e)}'}), 500
 
+def log_file_backup(filepath, operation):
+    """Log file contents before modification (safety backup)."""
+    backup_dir = '/home/plexadmin/movie-checker-app/logs/backups'
+    try:
+        os.makedirs(backup_dir, exist_ok=True)
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        filename = Path(filepath).name
+        backup_file = f"{backup_dir}/{filename}.{operation}.{timestamp}.backup"
+
+        result = subprocess.run(
+            ['ssh', 'nas', f'cat "{filepath}"'],
+            capture_output=True,
+            text=True,
+            timeout=10
+        )
+
+        if result.returncode == 0:
+            with open(backup_file, 'w') as f:
+                f.write(result.stdout)
+            log_event(f"Backup: {filepath} → {backup_file}")
+    except Exception as e:
+        log_event(f"Warning: Could not create backup - {str(e)}")
+
 @app.route('/api/save-wishlist', methods=['POST'])
 def save_wishlist():
     """Save wishlist items to Obsidian vault."""
@@ -381,6 +404,9 @@ def save_wishlist():
                 print(f"SSH write error: {result.stderr}")
                 return jsonify({'error': f'Failed to create wishlist: {result.stderr}'}), 500
         else:
+            # Backup before modification
+            log_file_backup(wishlist_path, 'add-items')
+
             # Find where "## Removed Items" section starts, insert before it
             lines = existing_content.split('\n')
             removed_section_idx = None
@@ -482,6 +508,9 @@ def auto_check_wishlist():
                 'removed': [],
                 'checked': len(wishlist_items)
             }), 200
+
+        # Backup before modification
+        log_file_backup(wishlist_path, 'auto-check')
 
         # Build removal entries with timestamp
         removal_entries = []
