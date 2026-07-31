@@ -320,7 +320,7 @@ def compare():
         return jsonify({'error': f'Server error: {str(e)}'}), 500
 
 def log_file_backup(filepath, operation):
-    """Log file contents before modification (safety backup)."""
+    """Log file contents before modification (safety backup). Keep last 10 backups per operation."""
     backup_dir = '/home/plexadmin/movie-checker-app/logs/backups'
     try:
         os.makedirs(backup_dir, exist_ok=True)
@@ -339,6 +339,17 @@ def log_file_backup(filepath, operation):
             with open(backup_file, 'w') as f:
                 f.write(result.stdout)
             log_event(f"Backup: {filepath} → {backup_file}")
+
+            # Cleanup old backups - keep only last 10 per operation
+            import glob
+            pattern = f"{backup_dir}/{filename}.{operation}.*.backup"
+            backups = sorted(glob.glob(pattern), reverse=True)
+            for old_backup in backups[10:]:  # Delete all but the 10 most recent
+                try:
+                    os.remove(old_backup)
+                    log_event(f"Cleanup: Removed old backup {Path(old_backup).name}")
+                except Exception as e:
+                    log_event(f"Warning: Could not remove old backup - {str(e)}")
     except Exception as e:
         log_event(f"Warning: Could not create backup - {str(e)}")
 

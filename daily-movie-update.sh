@@ -6,11 +6,28 @@
 LOG_DIR="$HOME/movie-checker-app/logs"
 mkdir -p "$LOG_DIR"
 LOG_FILE="$LOG_DIR/daily.log"
+MAX_LOG_SIZE=$((10 * 1024 * 1024))  # 10MB
+ARCHIVE_THRESHOLD=$((50 * 1024 * 1024))  # 50MB for archives
 
 # Function to log with timestamp
 log_msg() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" | tee -a "$LOG_FILE"
 }
+
+# Function to rotate logs if they get too large
+rotate_logs() {
+    if [ -f "$LOG_FILE" ] && [ $(stat -f%z "$LOG_FILE" 2>/dev/null || stat -c%s "$LOG_FILE") -gt $MAX_LOG_SIZE ]; then
+        TIMESTAMP=$(date '+%Y%m%d_%H%M%S')
+        mv "$LOG_FILE" "$LOG_DIR/daily.$TIMESTAMP.log"
+        log_msg "Log rotated: daily.$TIMESTAMP.log"
+
+        # Clean up old archives (keep only 5 most recent)
+        cd "$LOG_DIR"
+        ls -t daily.*.log 2>/dev/null | tail -n +6 | xargs -r rm
+    fi
+}
+
+rotate_logs
 
 log_msg "=== Starting daily movie maintenance ==="
 
