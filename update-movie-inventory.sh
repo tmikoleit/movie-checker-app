@@ -44,8 +44,8 @@ while IFS= read -r movie; do
     INVENTORY_CONTENT+="- $movie"$'\n'
 done <<< "$MOVIES"
 
-# Write to temp file, then atomically move (better for Syncthing)
-TEMP_PATH="${INVENTORY_PATH}.tmp.$$"
+# Write to temp file in /tmp (not synced), then atomically move
+TEMP_PATH="/tmp/Movie_Inventory.md.tmp.$$"
 ssh nas "umask 0002 && cat > '$TEMP_PATH'" <<< "$INVENTORY_CONTENT"
 
 if [ $? -ne 0 ]; then

@@ -404,7 +404,7 @@ def save_wishlist():
 
         # If file doesn't exist, create with header and new items
         if not existing_content:
-            temp_path = f"{wishlist_path}.tmp.{os.getpid()}"
+            temp_path = f"/tmp/Wishlist.md.tmp.{os.getpid()}"
             result = subprocess.run(
                 ['ssh', 'nas', f'umask 0002 && cat > "{temp_path}"'],
                 input=f"# Wishlist\n{new_content}\n",
@@ -443,8 +443,8 @@ def save_wishlist():
                 # No removed section yet, just append to end
                 updated_content = existing_content + '\n' + new_content
 
-            # Write to temp file, then atomically move (better for Syncthing)
-            temp_path = f"{wishlist_path}.tmp.{os.getpid()}"
+            # Write to temp file in /tmp, then atomically move (better for Syncthing)
+            temp_path = f"/tmp/Wishlist.md.tmp.{os.getpid()}"
             result = subprocess.run(
                 ['ssh', 'nas', f'umask 0002 && cat > "{temp_path}"'],
                 input=updated_content,
@@ -579,8 +579,8 @@ def auto_check_wishlist():
 
         updated_content = '\n'.join(lines)
 
-        # Write to temp file, then atomically move (better for Syncthing)
-        temp_path = f"{wishlist_path}.tmp.{os.getpid()}"
+        # Write to temp file in /tmp, then atomically move (better for Syncthing)
+        temp_path = f"/tmp/Wishlist.md.tmp.{os.getpid()}"
         result = subprocess.run(
             ['ssh', 'nas', f'umask 0002 && cat > "{temp_path}"'],
             input=updated_content,
