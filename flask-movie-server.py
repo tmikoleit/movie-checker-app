@@ -432,19 +432,20 @@ def auto_check_wishlist():
             log_event("Wishlist not found or empty")
             return jsonify({'message': 'Wishlist not found or empty', 'removed': []}), 200
 
-        # Parse wishlist items
+        # Parse wishlist items with original line format
         wishlist_items = []
+        original_lines = {}
         for line in wishlist_content.split('\n'):
-            line = line.strip()
-            if line.startswith('- '):
-                title = line[2:].rsplit(' (', 1)[0].strip()
+            stripped = line.strip()
+            if stripped.startswith('- ') and not stripped.startswith('- ~~'):
+                title = stripped[2:].rsplit(' (', 1)[0].strip()
                 wishlist_items.append(title)
+                original_lines[title] = stripped
 
         log_event(f"Checking {len(wishlist_items)} wishlist items for 95%+ matches")
 
         # Check each wishlist item for 95%+ matches
         removed_items = []
-        kept_items = []
 
         for item in wishlist_items:
             match_type, matched_title, confidence = fuzzy_match(item, owned_movies)
@@ -457,8 +458,6 @@ def auto_check_wishlist():
                     'matched': matched_title,
                     'confidence': confidence_pct
                 })
-            else:
-                kept_items.append(item)
 
         if not removed_items:
             log_event(f"No 95%+ matches found. All {len(wishlist_items)} items kept.")
@@ -468,24 +467,27 @@ def auto_check_wishlist():
                 'checked': len(wishlist_items)
             }), 200
 
-        # Rewrite wishlist without removed items
-        new_lines = ['# Wishlist']
-        for item in kept_items:
-            new_lines.append(f"- {item} (Blu-ray)")
+        # Append strikethrough entries for removed items (append-only, preserves history)
+        removal_log = [f"\n## Auto-removed {datetime.now().strftime('%Y-%m-%d %H:%M')}"]
+        for item in removed_items:
+            original_line = original_lines.get(item['title'], f"- {item['title']}")
+            strikethrough = f"- ~~{item['title']}~~ (matched: {item['matched']} at {item['confidence']}%)"
+            removal_log.append(strikethrough)
+            log_event(f"  Marked as removed: {strikethrough}")
 
-        new_content = '\n'.join(new_lines) + '\n'
+        removal_content = '\n'.join(removal_log)
 
-        # Write updated wishlist back
+        # Append removal log to wishlist
         result = subprocess.run(
-            ['ssh', 'nas', f'cat > "{wishlist_path}"'],
-            input=new_content,
+            ['ssh', 'nas', f'cat >> "{wishlist_path}"'],
+            input=removal_content,
             capture_output=True,
             text=True,
             timeout=10
         )
 
         if result.returncode != 0:
-            log_event(f"ERROR: SSH write failed: {result.stderr}")
+            log_event(f"ERROR: SSH append failed: {result.stderr}")
             return jsonify({'error': f'Failed to update wishlist: {result.stderr}'}), 500
 
         log_event(f"SUCCESS: Removed {len(removed_items)} movies. {len(kept_items)} items remain in wishlist.")
