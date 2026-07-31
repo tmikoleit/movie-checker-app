@@ -368,11 +368,11 @@ def save_wishlist():
 
         new_content = '\n'.join(new_lines)
 
-        # If file doesn't exist, create with header first
+        # If file doesn't exist, create with header and new items
         if not existing_content:
             result = subprocess.run(
                 ['ssh', 'nas', f'cat > "{wishlist_path}"'],
-                input="# Wishlist\n",
+                input=f"# Wishlist\n{new_content}\n",
                 capture_output=True,
                 text=True,
                 timeout=10
@@ -380,19 +380,34 @@ def save_wishlist():
             if result.returncode != 0:
                 print(f"SSH write error: {result.stderr}")
                 return jsonify({'error': f'Failed to create wishlist: {result.stderr}'}), 500
+        else:
+            # Find where "## Removed Items" section starts, insert before it
+            lines = existing_content.split('\n')
+            removed_section_idx = None
+            for i, line in enumerate(lines):
+                if line.startswith('## Removed Items'):
+                    removed_section_idx = i
+                    break
 
-        # Always append new items
-        result = subprocess.run(
-            ['ssh', 'nas', f'cat >> "{wishlist_path}"'],
-            input='\n' + new_content,
-            capture_output=True,
-            text=True,
-            timeout=10
-        )
+            if removed_section_idx is not None:
+                # Insert before removed section
+                lines.insert(removed_section_idx, new_content)
+                updated_content = '\n'.join(lines)
+            else:
+                # No removed section yet, just append to end
+                updated_content = existing_content + '\n' + new_content
 
-        if result.returncode != 0:
-            print(f"SSH write error: {result.stderr}")
-            return jsonify({'error': f'Failed to write to Obsidian: {result.stderr}'}), 500
+            result = subprocess.run(
+                ['ssh', 'nas', f'cat > "{wishlist_path}"'],
+                input=updated_content,
+                capture_output=True,
+                text=True,
+                timeout=10
+            )
+
+            if result.returncode != 0:
+                print(f"SSH write error: {result.stderr}")
+                return jsonify({'error': f'Failed to write to Obsidian: {result.stderr}'}), 500
 
         return jsonify({'success': True, 'message': f'Added {len(new_items)} movies to wishlist'}), 200
 
@@ -467,27 +482,56 @@ def auto_check_wishlist():
                 'checked': len(wishlist_items)
             }), 200
 
-        # Append strikethrough entries for removed items (append-only, preserves history)
-        removal_log = [f"\n## Auto-removed {datetime.now().strftime('%Y-%m-%d %H:%M')}"]
+        # Build removal entries with timestamp
+        removal_entries = []
         for item in removed_items:
-            original_line = original_lines.get(item['title'], f"- {item['title']}")
             strikethrough = f"- ~~{item['title']}~~ (matched: {item['matched']} at {item['confidence']}%)"
-            removal_log.append(strikethrough)
+            removal_entries.append(strikethrough)
             log_event(f"  Marked as removed: {strikethrough}")
 
-        removal_content = '\n'.join(removal_log)
-
-        # Append removal log to wishlist
+        # Read file again to insert removed items in proper section
         result = subprocess.run(
-            ['ssh', 'nas', f'cat >> "{wishlist_path}"'],
-            input=removal_content,
+            ['ssh', 'nas', f'cat "{wishlist_path}"'],
+            capture_output=True,
+            text=True,
+            timeout=10
+        )
+        current_content = result.stdout if result.returncode == 0 else ""
+
+        lines = current_content.split('\n')
+        removed_section_idx = None
+        for i, line in enumerate(lines):
+            if line.startswith('## Removed Items'):
+                removed_section_idx = i
+                break
+
+        # Build the removal log entry
+        removal_log = [f"## Auto-removed {datetime.now().strftime('%Y-%m-%d %H:%M')}"]
+        removal_log.extend(removal_entries)
+
+        if removed_section_idx is not None:
+            # Insert after "## Removed Items" header, before first timestamp section
+            lines.insert(removed_section_idx + 1, '\n'.join(removal_log))
+        else:
+            # Create new "## Removed Items" section at end
+            if lines and lines[-1].strip():
+                lines.append('')  # Add blank line if needed
+            lines.append('## Removed Items')
+            lines.extend(removal_log)
+
+        updated_content = '\n'.join(lines)
+
+        # Write updated wishlist
+        result = subprocess.run(
+            ['ssh', 'nas', f'cat > "{wishlist_path}"'],
+            input=updated_content,
             capture_output=True,
             text=True,
             timeout=10
         )
 
         if result.returncode != 0:
-            log_event(f"ERROR: SSH append failed: {result.stderr}")
+            log_event(f"ERROR: SSH write failed: {result.stderr}")
             return jsonify({'error': f'Failed to update wishlist: {result.stderr}'}), 500
 
         log_event(f"SUCCESS: Removed {len(removed_items)} movies from wishlist.")
