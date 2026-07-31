@@ -9,8 +9,9 @@ PLEX_FOLDER="/volume1/Plex Media/Movies"
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Starting movie inventory update from NAS..."
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Note: Source data in $PLEX_FOLDER is the backup"
 
-# Get list of movies from Plex folder, sort alphabetically
-MOVIES=$(ssh nas "ls -1 '$PLEX_FOLDER' 2>/dev/null | grep -v '^@' | grep -v '^\.' | sort" 2>&1)
+# Find all movie folders recursively (one level deep in category folders)
+# Plex structure: Movies/[Category]/[Movie Folder]
+MOVIES=$(ssh nas "find '$PLEX_FOLDER' -maxdepth 2 -mindepth 2 -type d ! -name '@eaDir' ! -name '.*' -exec basename {} \; | sort" 2>&1)
 
 if [ -z "$MOVIES" ]; then
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] ERROR: Could not read Plex Media folder"
@@ -18,7 +19,7 @@ if [ -z "$MOVIES" ]; then
 fi
 
 # Count total movies
-TOTAL=$(echo "$MOVIES" | wc -l)
+TOTAL=$(echo "$MOVIES" | grep -v '^$' | wc -l)
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Found $TOTAL movies in Plex Media folder"
 
 # Build the inventory markdown file
@@ -43,13 +44,23 @@ while IFS= read -r movie; do
     INVENTORY_CONTENT+="- $movie"$'\n'
 done <<< "$MOVIES"
 
-# Remove old file and write with proper permissions (set umask on NAS side)
-ssh nas "rm -f '$INVENTORY_PATH' && umask 0002 && cat > '$INVENTORY_PATH'" <<< "$INVENTORY_CONTENT"
+# Write to temp file, then atomically move (better for Syncthing)
+TEMP_PATH="${INVENTORY_PATH}.tmp.$$"
+ssh nas "umask 0002 && cat > '$TEMP_PATH'" <<< "$INVENTORY_CONTENT"
+
+if [ $? -ne 0 ]; then
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] ✗ ERROR: Failed to write temporary file"
+    exit 1
+fi
+
+# Atomically move temp file to final location (single filesystem operation)
+ssh nas "mv -f '$TEMP_PATH' '$INVENTORY_PATH'"
 
 if [ $? -eq 0 ]; then
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] ✓ Inventory updated successfully ($TOTAL movies)"
     exit 0
 else
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] ✗ ERROR: Failed to write inventory to NAS"
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] ✗ ERROR: Failed to move inventory file"
+    ssh nas "rm -f '$TEMP_PATH'"  # Cleanup temp file
     exit 1
 fi

@@ -404,13 +404,22 @@ def save_wishlist():
 
         # If file doesn't exist, create with header and new items
         if not existing_content:
+            temp_path = f"{wishlist_path}.tmp.{os.getpid()}"
             result = subprocess.run(
-                ['ssh', 'nas', f'umask 0002 && cat > "{wishlist_path}"'],
+                ['ssh', 'nas', f'umask 0002 && cat > "{temp_path}"'],
                 input=f"# Wishlist\n{new_content}\n",
                 capture_output=True,
                 text=True,
                 timeout=10
             )
+            if result.returncode == 0:
+                # Atomically move to final location
+                result = subprocess.run(
+                    ['ssh', 'nas', f'mv -f "{temp_path}" "{wishlist_path}"'],
+                    capture_output=True,
+                    text=True,
+                    timeout=10
+                )
             if result.returncode != 0:
                 print(f"SSH write error: {result.stderr}")
                 return jsonify({'error': f'Failed to create wishlist: {result.stderr}'}), 500
@@ -434,14 +443,22 @@ def save_wishlist():
                 # No removed section yet, just append to end
                 updated_content = existing_content + '\n' + new_content
 
-            # Remove and recreate to ensure proper permissions from umask (set on NAS)
+            # Write to temp file, then atomically move (better for Syncthing)
+            temp_path = f"{wishlist_path}.tmp.{os.getpid()}"
             result = subprocess.run(
-                ['ssh', 'nas', f'rm -f "{wishlist_path}" && umask 0002 && cat > "{wishlist_path}"'],
+                ['ssh', 'nas', f'umask 0002 && cat > "{temp_path}"'],
                 input=updated_content,
                 capture_output=True,
                 text=True,
                 timeout=10
             )
+            if result.returncode == 0:
+                result = subprocess.run(
+                    ['ssh', 'nas', f'mv -f "{temp_path}" "{wishlist_path}"'],
+                    capture_output=True,
+                    text=True,
+                    timeout=10
+                )
 
             if result.returncode != 0:
                 print(f"SSH write error: {result.stderr}")
@@ -562,14 +579,22 @@ def auto_check_wishlist():
 
         updated_content = '\n'.join(lines)
 
-        # Remove and recreate to ensure proper permissions from umask (set on NAS)
+        # Write to temp file, then atomically move (better for Syncthing)
+        temp_path = f"{wishlist_path}.tmp.{os.getpid()}"
         result = subprocess.run(
-            ['ssh', 'nas', f'rm -f "{wishlist_path}" && umask 0002 && cat > "{wishlist_path}"'],
+            ['ssh', 'nas', f'umask 0002 && cat > "{temp_path}"'],
             input=updated_content,
             capture_output=True,
             text=True,
             timeout=10
         )
+        if result.returncode == 0:
+            result = subprocess.run(
+                ['ssh', 'nas', f'mv -f "{temp_path}" "{wishlist_path}"'],
+                capture_output=True,
+                text=True,
+                timeout=10
+            )
 
         if result.returncode != 0:
             log_event(f"ERROR: SSH write failed: {result.stderr}")
