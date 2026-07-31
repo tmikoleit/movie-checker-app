@@ -43,7 +43,8 @@ fi
 # Step 2: Auto-check wishlist against updated inventory
 log_msg "Checking wishlist for newly acquired movies..."
 RESPONSE=$(curl -s -X POST http://localhost:5000/api/auto-check-wishlist)
-if echo "$RESPONSE" | grep -q '"success"'; then
+# Accept both success and no-matches cases (both return valid JSON)
+if echo "$RESPONSE" | grep -q '"checked"'; then
     log_msg "✓ Wishlist auto-check complete"
     # Log the result details
     REMOVED=$(echo "$RESPONSE" | grep -o '"removed":\[\([^]]*\)\]' | grep -c '"title"' || echo "0")
