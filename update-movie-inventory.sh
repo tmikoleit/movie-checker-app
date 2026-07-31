@@ -3,8 +3,6 @@
 # Generates Movie Inventory.md on the NAS with all owned movies
 # Run from Mini PC - no Mac dependency
 
-umask 0002  # Create files with 664 permissions (rw-rw-r--)
-
 INVENTORY_PATH="/volume1/Obsidian/Data Hoarding/Movie Inventory.md"
 PLEX_FOLDER="/volume1/Plex Media/Movies"
 
@@ -44,8 +42,8 @@ while IFS= read -r movie; do
     INVENTORY_CONTENT+="- $movie"$'\n'
 done <<< "$MOVIES"
 
-# Remove old file (so new one gets correct permissions from umask) and write
-ssh nas "rm -f '$INVENTORY_PATH' && cat > '$INVENTORY_PATH'" <<< "$INVENTORY_CONTENT"
+# Remove old file and write with proper permissions (set umask on NAS side)
+ssh nas "rm -f '$INVENTORY_PATH' && umask 0002 && cat > '$INVENTORY_PATH'" <<< "$INVENTORY_CONTENT"
 
 if [ $? -eq 0 ]; then
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] ✓ Inventory updated successfully ($TOTAL movies)"

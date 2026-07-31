@@ -16,8 +16,6 @@ from flask import Flask, render_template, request, jsonify
 from flask_cors import CORS
 from anthropic import Anthropic
 
-os.umask(0o002)  # Create files with 664 permissions (rw-rw-r--)
-
 app = Flask(__name__)
 CORS(app)
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max
@@ -373,7 +371,7 @@ def save_wishlist():
         # If file doesn't exist, create with header and new items
         if not existing_content:
             result = subprocess.run(
-                ['ssh', 'nas', f'cat > "{wishlist_path}"'],
+                ['ssh', 'nas', f'umask 0002 && cat > "{wishlist_path}"'],
                 input=f"# Wishlist\n{new_content}\n",
                 capture_output=True,
                 text=True,
@@ -399,9 +397,9 @@ def save_wishlist():
                 # No removed section yet, just append to end
                 updated_content = existing_content + '\n' + new_content
 
-            # Remove and recreate to ensure proper permissions from umask
+            # Remove and recreate to ensure proper permissions from umask (set on NAS)
             result = subprocess.run(
-                ['ssh', 'nas', f'rm -f "{wishlist_path}" && cat > "{wishlist_path}"'],
+                ['ssh', 'nas', f'rm -f "{wishlist_path}" && umask 0002 && cat > "{wishlist_path}"'],
                 input=updated_content,
                 capture_output=True,
                 text=True,
@@ -524,9 +522,9 @@ def auto_check_wishlist():
 
         updated_content = '\n'.join(lines)
 
-        # Remove and recreate to ensure proper permissions from umask
+        # Remove and recreate to ensure proper permissions from umask (set on NAS)
         result = subprocess.run(
-            ['ssh', 'nas', f'rm -f "{wishlist_path}" && cat > "{wishlist_path}"'],
+            ['ssh', 'nas', f'rm -f "{wishlist_path}" && umask 0002 && cat > "{wishlist_path}"'],
             input=updated_content,
             capture_output=True,
             text=True,
