@@ -1,9 +1,11 @@
 #!/bin/bash
 # Daily movie maintenance: update inventory, then auto-check wishlist
 # Runs via cron at 7 AM on Mini PC
-# Logs to: /var/log/movie-checker-daily.log (auto-rotated)
+# Logs to: ~/movie-checker-app/logs/daily.log
 
-LOG_FILE="/var/log/movie-checker-daily.log"
+LOG_DIR="$HOME/movie-checker-app/logs"
+mkdir -p "$LOG_DIR"
+LOG_FILE="$LOG_DIR/daily.log"
 
 # Function to log with timestamp
 log_msg() {
